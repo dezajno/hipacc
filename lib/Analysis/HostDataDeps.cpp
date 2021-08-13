@@ -654,9 +654,9 @@ FusiblePartitionBlock::FusiblePartitionBlock(PatternType patternType, HostDataDe
           } else {
             hipacc_require(innerConsumer == consumer, "In parallel patterns, all parts must have the same consumer.");
           }
-        }
 
-        producers.push_back(inPart->front());
+          producers.push_back(inPart->front());
+        }
       }
 
       hipacc_require(consumer != nullptr, "Patterns with no consumers are not allowed.");

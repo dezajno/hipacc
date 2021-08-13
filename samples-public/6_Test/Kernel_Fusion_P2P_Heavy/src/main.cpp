@@ -42,16 +42,17 @@ using namespace hipacc::math;
 class PointOperatorExample : public Kernel<TYPE> {
     private:
         Accessor<TYPE> &in;
+		int n_iter;
 
     public:
-        PointOperatorExample(IterationSpace<TYPE> &iter, Accessor<TYPE> &acc)
-              : Kernel(iter), in(acc) {
+        PointOperatorExample(IterationSpace<TYPE> &iter, Accessor<TYPE> &acc, int n_iter)
+              : Kernel(iter), in(acc), n_iter(n_iter) {
             add_accessor(&in);
         }
 
         void kernel() {
             TYPE interm_pixel = in();
-            for(int i = 0; i < N_ITER; ++i) {
+            for(int i = 0; i < n_iter; ++i) {
                 interm_pixel += 3;
             }
             output() = interm_pixel;
@@ -65,8 +66,20 @@ void kernel_fusion(TYPE *in, TYPE *out, int width, int height);
  * Main function                                                         *
  *************************************************************************/
 HIPACC_CODEGEN int main(int argc, const char **argv) {
-    const int width = WIDTH;
-    const int height = HEIGHT;
+    int width_arg = WIDTH;
+    int height_arg = HEIGHT;
+
+    if(argc >= 2) {
+        width_arg = std::stoi(argv[1]);
+        height_arg = width_arg;
+    }
+
+    if(argc >= 3) {
+        height_arg = std::stoi(argv[2]);
+    }
+
+    const int width = width_arg;
+    const int height = height_arg;
 
     // host memory for image of width x height pixels, random
     TYPE *input = (TYPE*)load_data<TYPE>(width, height);
@@ -85,17 +98,17 @@ HIPACC_CODEGEN int main(int argc, const char **argv) {
     Accessor<TYPE> acc0(in);
     Image<TYPE> buf0(width, height);
     IterationSpace<TYPE> iter0(buf0);
-    PointOperatorExample pointOp0(iter0, acc0);
+    PointOperatorExample pointOp0(iter0, acc0, N_ITER);
 
     Accessor<TYPE> acc1(buf0);
     Image<TYPE> buf1(width, height);
     IterationSpace<TYPE> iter1(buf1);
-    PointOperatorExample pointOp1(iter1, acc1);
+    PointOperatorExample pointOp1(iter1, acc1, N_ITER);
 
     Accessor<TYPE> acc2(buf1);
     Image<TYPE> buf2(width, height);
     IterationSpace<TYPE> iter2(out);
-    PointOperatorExample pointOp2(iter2, acc2);
+    PointOperatorExample pointOp2(iter2, acc2, N_ITER);
 
     // execution after all decls
     pointOp0.execute();
@@ -122,7 +135,7 @@ void point_kernel(TYPE *in, TYPE *out, int width, int height) {
     for (int p = 0; p < width*height; ++p) {
         TYPE interm_pixel = in[p];
         for(int i = 0; i < N_ITER; ++i) {
-            interm_pixel += 3;
+            interm_pixel *= 3;
         }
         out[p] = interm_pixel;
     }

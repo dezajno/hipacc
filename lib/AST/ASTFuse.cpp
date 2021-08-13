@@ -417,6 +417,7 @@ void ASTFuse::HipaccFusion(std::list<HipaccKernel *> *l) {
           break;
       }
     } else if (patternType == FusiblePartitionBlock::PatternType::Parallel) {
+      FusiblePartitionBlock::Pattern pattern = partitionBlock.getPattern();
       auto imgFields = KC->getImgFields();
       
       FieldDecl* srcAccessorDecl = nullptr;
@@ -424,44 +425,74 @@ void ASTFuse::HipaccFusion(std::list<HipaccKernel *> *l) {
       HipaccAccessor* srcAccessor = nullptr;
       bool srcProduce = (parallelInput == nullptr);
 
-      switch(KTag->Point2PointLoc) {
+      switch(pattern) {
         default:
           break;
-        case Source:
-          if (DEBUG) { std::cout << "P2P source generate"; }
-          hipacc_require(KernelType == PointOperator, "Mismatch kernel type for fusion");
 
-          srcIterDecl = KC->getOutField();
-          for (FieldDecl* fieldDecl : imgFields) {
-            if (fieldDecl != srcIterDecl) {
-              hipacc_require(srcAccessorDecl == nullptr,
-                "source kernel in nP2P fusion may not have more than one accessor");
-              srcAccessorDecl = fieldDecl;
-            }
+        // Parallel point-only patterns
+        case FusiblePartitionBlock::Pattern::NP2P:
+          switch(KTag->Point2PointLoc) {
+            default:
+              break;
+            case Source:
+              if (DEBUG) { std::cout << "P2P source generate"; }
+              hipacc_require(KernelType == PointOperator, "Mismatch kernel type for fusion");
+
+              srcIterDecl = KC->getOutField();
+              for (FieldDecl* fieldDecl : imgFields) {
+                if (fieldDecl != srcIterDecl) {
+                  hipacc_require(srcAccessorDecl == nullptr,
+                    "source kernel in nP2P fusion may not have more than one accessor");
+                  srcAccessorDecl = fieldDecl;
+                }
+              }
+              hipacc_require(srcAccessorDecl != nullptr,
+                "source kernel in nP2P fusion must have exactly one accessor");
+
+              srcAccessor = K->getImgFromMapping(srcAccessorDecl);
+
+              if (parallelInput == nullptr) {
+                createReg4FusionVarDecl(srcAccessor->getImage()->getType(), ppt);
+                parallelInput = fusionRegVarDecls.back();
+              }
+
+              createReg4FusionVarDecl(KC->getOutField()->getType(), ppt);
+              parallelOutImageMap[iterSpace->getImage()] = fusionRegVarDecls.back();
+              Hipacc->setFusionNP2PSrcOperator(parallelInput, fusionRegVarDecls.back(), srcProduce);
+              curFusionBody = Hipacc->Hipacc(KC->getKernelFunction()->getBody());
+              break;
+            case Destination:
+              if (DEBUG) { std::cout << "P2P Destination generate"; }
+              hipacc_require(KernelType == PointOperator, "Mismatch kernel type for fusion");
+              Hipacc->setFusionNP2PDestOperator(parallelOutImageMap);
+              curFusionBody = Hipacc->Hipacc(KC->getKernelFunction()->getBody());
+              break;
+            case Intermediate:
+              hipacc_require(false, "Invalid kernel position for parallel fusion");
+              break;
           }
-          hipacc_require(srcAccessorDecl != nullptr,
-            "source kernel in nP2P fusion must have exactly one accessor");
-
-          srcAccessor = K->getImgFromMapping(srcAccessorDecl);
-
-          if (parallelInput == nullptr) {
-            createReg4FusionVarDecl(srcAccessor->getImage()->getType(), ppt);
-            parallelInput = fusionRegVarDecls.back();
+          break;
+        
+        // multiple locals to point pattern
+        case FusiblePartitionBlock::Pattern::NL2P:
+          switch(KTag->Point2PointLoc) {
+            default:
+              break;
+            
+            case Source:
+              hipacc_require(KernelType == LocalOperator, "Mismatch kernel type for fusion");
+              createReg4FusionVarDecl(KC->getOutField()->getType(), ppt);
+              parallelOutImageMap[iterSpace->getImage()] = fusionRegVarDecls.back();
+              Hipacc->setFusionP2PSrcOperator(fusionRegVarDecls.back());
+              curFusionBody = Hipacc->Hipacc(KC->getKernelFunction()->getBody());
+              break;
+            
+            case Destination:
+              hipacc_require(KernelType == PointOperator, "Mismatch kernel type for fusion");
+              Hipacc->setFusionNP2PDestOperator(parallelOutImageMap);
+              curFusionBody = Hipacc->Hipacc(KC->getKernelFunction()->getBody());
+              break;
           }
-
-          createReg4FusionVarDecl(KC->getOutField()->getType(), ppt);
-          parallelOutImageMap[iterSpace->getImage()] = fusionRegVarDecls.back();
-          Hipacc->setFusionNP2PSrcOperator(parallelInput, fusionRegVarDecls.back(), srcProduce);
-          curFusionBody = Hipacc->Hipacc(KC->getKernelFunction()->getBody());
-          break;
-        case Destination:
-          if (DEBUG) { std::cout << "P2P Destination generate"; }
-          hipacc_require(KernelType == PointOperator, "Mismatch kernel type for fusion");
-          Hipacc->setFusionNP2PDestOperator(parallelOutImageMap);
-          curFusionBody = Hipacc->Hipacc(KC->getKernelFunction()->getBody());
-          break;
-        case Intermediate:
-          hipacc_require(false, "Invalid kernel position for parallel fusion");
           break;
       }
     }

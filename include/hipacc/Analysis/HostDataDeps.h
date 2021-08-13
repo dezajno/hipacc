@@ -635,6 +635,7 @@ class FusiblePartitionBlock {
       switch (pattern) {
         case FusiblePartitionBlock::Pattern::Linear:
         case FusiblePartitionBlock::Pattern::NP2P:
+        case FusiblePartitionBlock::Pattern::NL2P:
           return true;
         default:
           return false;
