@@ -1105,8 +1105,8 @@ void HostDataDeps::fusibilityAnalysisLinearAndParallel() {
       auto VKVC = visitedKernelDeclNameMap_[consumerP];
 
       // generate hints for potential kernel fusion opportunities
-      if ((std::find(VKVP.begin(), VKVP.end(), consumerName) != VKVP.end()) &&
-         (std::find(VKVC.begin(), VKVC.end(), producerName) != VKVC.end())) {
+      if ((std::find(VKVP.begin(), VKVP.end(), producerName) != VKVP.end()) &&
+         (std::find(VKVC.begin(), VKVC.end(), consumerName) != VKVC.end())) {
         // check shared memory options for local-based fusion
         if ((KT == LocalOperator) && (!compilerOptions->useLocalMemory())) {
           llvm::errs() << "[Kernel Fusion INFO] hints:\n";
