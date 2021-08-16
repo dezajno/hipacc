@@ -212,14 +212,15 @@ HIPACC_CODEGEN int main(int argc, const char **argv) {
     IterationSpace<uchar4> iter(out);
 
     Sobel filter_x(iter_tmp1, acc, dom_x, mask_x);
+    Sobel filter_y(iter_tmp2, acc, dom_y, mask_y);
+    SobelCombine combine(iter, acc_tmp1, acc_tmp2, norm);
+
     filter_x.execute();
     timing += hipacc_last_kernel_timing();
 
-    Sobel filter_y(iter_tmp2, acc, dom_y, mask_y);
     filter_y.execute();
     timing += hipacc_last_kernel_timing();
 
-    SobelCombine combine(iter, acc_tmp1, acc_tmp2, norm);
     combine.execute();
     timing += hipacc_last_kernel_timing();
 

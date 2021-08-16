@@ -256,54 +256,56 @@ HIPACC_CODEGEN int main(int argc, const char **argv) {
     BoundaryCondition<uchar> bound_in(in, maskx, Boundary::CLAMP);
     Accessor<uchar> acc_in(bound_in);
     Sobel derivx(iter_dx, acc_in, maskx, domx);
-    derivx.execute();
-    timing += hipacc_last_kernel_timing();
 
     IterationSpace<short> iter_dy(dy);
     Sobel derivy(iter_dy, acc_in, masky, domy);
-    derivy.execute();
-    timing += hipacc_last_kernel_timing();
 
     Accessor<short> acc_dx(dx);
     IterationSpace<short> iter_sx(sx);
     Square1 squarex(iter_sx, acc_dx);
-    squarex.execute();
-    timing += hipacc_last_kernel_timing();
 
     Accessor<short> acc_dy(dy);
     IterationSpace<short> iter_sy(sy);
     Square1 squarey(iter_sy, acc_dy);
-    squarey.execute();
-    timing += hipacc_last_kernel_timing();
 
     IterationSpace<short> iter_sxy(sxy);
     Square2 squarexy(iter_sxy, acc_dx, acc_dy);
-    squarexy.execute();
-    timing += hipacc_last_kernel_timing();
 
     BoundaryCondition<short> bound_sx(sx, maskxy, Boundary::CLAMP);
     Accessor<short> acc_sx(bound_sx);
     Gaussian gaussx(iter_dx, acc_sx, maskxy, norm);
-    gaussx.execute();
-    timing += hipacc_last_kernel_timing();
 
     BoundaryCondition<short> bound_sy(sy, maskxy, Boundary::CLAMP);
     Accessor<short> acc_sy(bound_sy);
     Gaussian gaussy(iter_dy, acc_sy, maskxy, norm);
-    gaussy.execute();
-    timing += hipacc_last_kernel_timing();
 
     IterationSpace<short> iter_dxy(dxy);
     BoundaryCondition<short> bound_sxy(sxy, maskxy, Boundary::CLAMP);
     Accessor<short> acc_sxy(bound_sxy);
     Gaussian gaussxy(iter_dxy, acc_sxy, maskxy, norm);
-    gaussxy.execute();
-    timing += hipacc_last_kernel_timing();
 
 
     IterationSpace<uchar> iter_out(out);
     Accessor<short> acc_dxy(dxy);
     HarrisCorner harris(iter_out, acc_dx, acc_dy, acc_dxy, k, threshold);
+
+
+    derivx.execute();
+    timing += hipacc_last_kernel_timing();
+    derivy.execute();
+    timing += hipacc_last_kernel_timing();
+    squarex.execute();
+    timing += hipacc_last_kernel_timing();
+    squarey.execute();
+    timing += hipacc_last_kernel_timing();
+    squarexy.execute();
+    timing += hipacc_last_kernel_timing();
+    gaussx.execute();
+    timing += hipacc_last_kernel_timing();
+    gaussy.execute();
+    timing += hipacc_last_kernel_timing();
+    gaussxy.execute();
+    timing += hipacc_last_kernel_timing();
     harris.execute();
     timing += hipacc_last_kernel_timing();
 
